@@ -139,10 +139,11 @@ class JobRepository extends EntityRepository
     private function acquireLock($workerName, Job $job)
     {
         $affectedRows = $this->_em->getConnection()->executeUpdate(
-            "UPDATE jms_jobs SET workerName = :worker WHERE id = :id AND workerName IS NULL",
+            "UPDATE jms_jobs SET workerName = :worker, updatedAt = :updatedAt WHERE id = :id AND workerName IS NULL",
             array(
                 'worker' => $workerName,
                 'id' => $job->getId(),
+                'updatedAt' => new \DateTime(),
             )
         );
 

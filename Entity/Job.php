@@ -104,6 +104,9 @@ class Job
     /** @ORM\Column(type = "datetime", name="createdAt") */
     private $createdAt;
 
+    /** @ORM\Column(type = "datetime", name="updatedAt") */
+    private $updatedAt;
+
     /** @ORM\Column(type = "datetime", name="startedAt", nullable = true) */
     private $startedAt;
 
@@ -203,6 +206,7 @@ class Job
         $this->queue = $queue;
         $this->priority = $priority * -1;
         $this->createdAt = new \DateTime();
+        $this->updatedAt = new \DateTime();
         $this->executeAfter = new \DateTime();
         $this->executeAfter = $this->executeAfter->modify('-1 second');
         $this->dependencies = new ArrayCollection();
@@ -214,6 +218,7 @@ class Job
     {
         $this->state = self::STATE_PENDING;
         $this->createdAt = new \DateTime();
+        $this->updatedAt = new \DateTime();
         $this->startedAt = null;
         $this->checkedAt = null;
         $this->closedAt = null;
@@ -320,12 +325,23 @@ class Job
                 throw new LogicException('The previous cases were exhaustive. Unknown state: '.$this->state);
         }
 
+        $this->updatedAt = new \DateTime();
         $this->state = $newState;
     }
 
     public function getCreatedAt()
     {
         return $this->createdAt;
+    }
+
+    public function updated()
+    {
+        $this->updatedAt = new \DateTime();
+    }
+
+    public function getUpdatedAt()
+    {
+        return $this->updatedAt;
     }
 
     public function getClosedAt()

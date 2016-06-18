@@ -21,8 +21,7 @@ class CleanUpCommand extends ContainerAwareCommand
             ->setDescription('Cleans up jobs which exceed the maximum retention time.')
             ->addOption('max-retention', null, InputOption::VALUE_REQUIRED, 'The maximum retention time (value must be parsable by DateTime).', '7 days')
             ->addOption('max-retention-succeeded', null, InputOption::VALUE_REQUIRED, 'The maximum retention time for succeeded jobs (value must be parsable by DateTime).', '1 hour')
-            ->addOption('per-call', null, InputOption::VALUE_REQUIRED, 'The maximum number of jobs to clean-up per call.', 1000)
-        ;
+            ->addOption('per-call', null, InputOption::VALUE_REQUIRED, 'The maximum number of jobs to clean-up per call.', 1000);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
@@ -63,10 +62,12 @@ class CleanUpCommand extends ContainerAwareCommand
             $em->clear();
 
             /** @var Job $job */
-            $job = $em->createQuery("SELECT j FROM JMSJobQueueBundle:Job j
-                                      WHERE j.state = :running AND j.workerName IS NOT NULL AND j.checkedAt < :maxAge
-                                                AND j.id NOT IN (:excludedIds)")
+            $job = $em->createQuery("SELECT j FROM JMSJobQueueBundle:Job j WHERE 
+                                    ((j.state = :running  AND j.checkedAt < :maxAge) OR (j.state = :pending AND j.updatedAt < :maxAge))
+                                    AND j.workerName IS NOT NULL
+                                    AND j.id NOT IN (:excludedIds)")
                 ->setParameter('running', Job::STATE_RUNNING)
+                ->setParameter('pending', Job::STATE_PENDING)
                 ->setParameter('maxAge', new \DateTime('-5 minutes'), 'datetime')
                 ->setParameter('excludedIds', $excludedIds)
                 ->setMaxResults(1)
@@ -92,7 +93,7 @@ class CleanUpCommand extends ContainerAwareCommand
 
             $result = $con->executeQuery($incomingDepsSql, array('id' => $job->getId()));
             if ($result->fetchColumn() !== false) {
-                $em->transactional(function() use ($em, $job) {
+                $em->transactional(function () use ($em, $job) {
                     $this->resolveDependencies($em, $job);
                     $em->remove($job);
                 });
@@ -114,7 +115,7 @@ class CleanUpCommand extends ContainerAwareCommand
     {
         // If this job has failed, or has otherwise not succeeded, we need to set the
         // incoming dependencies to failed if that has not been done already.
-        if ( ! $job->isFinished()) {
+        if (!$job->isFinished()) {
             /** @var JobRepository $repository */
             $repository = $em->getRepository(Job::class);
             foreach ($repository->findIncomingDependencies($job) as $incomingDep) {
@@ -136,9 +137,9 @@ class CleanUpCommand extends ContainerAwareCommand
 
     private function findExpiredJobs(EntityManager $em, InputInterface $input)
     {
-        $succeededJobs = function(array $excludedIds) use ($em, $input) {
+        $succeededJobs = function (array $excludedIds) use ($em, $input) {
             return $em->createQuery("SELECT j FROM JMSJobQueueBundle:Job j WHERE j.closedAt < :maxRetentionTime AND j.originalJob IS NULL AND j.state = :succeeded AND j.id NOT IN (:excludedIds)")
-                ->setParameter('maxRetentionTime', new \DateTime('-'.$input->getOption('max-retention-succeeded')))
+                ->setParameter('maxRetentionTime', new \DateTime('-' . $input->getOption('max-retention-succeeded')))
                 ->setParameter('excludedIds', $excludedIds)
                 ->setParameter('succeeded', Job::STATE_FINISHED)
                 ->setMaxResults(100)
@@ -148,9 +149,9 @@ class CleanUpCommand extends ContainerAwareCommand
             yield $job;
         }
 
-        $finishedJobs = function(array $excludedIds) use ($em, $input) {
+        $finishedJobs = function (array $excludedIds) use ($em, $input) {
             return $em->createQuery("SELECT j FROM JMSJobQueueBundle:Job j WHERE j.closedAt < :maxRetentionTime AND j.originalJob IS NULL AND j.id NOT IN (:excludedIds)")
-                ->setParameter('maxRetentionTime', new \DateTime('-'.$input->getOption('max-retention')))
+                ->setParameter('maxRetentionTime', new \DateTime('-' . $input->getOption('max-retention')))
                 ->setParameter('excludedIds', $excludedIds)
                 ->setMaxResults(100)
                 ->getResult();
@@ -159,9 +160,9 @@ class CleanUpCommand extends ContainerAwareCommand
             yield $job;
         }
 
-        $canceledJobs = function(array $excludedIds) use ($em, $input) {
+        $canceledJobs = function (array $excludedIds) use ($em, $input) {
             return $em->createQuery("SELECT j FROM JMSJobQueueBundle:Job j WHERE j.state = :canceled AND j.createdAt < :maxRetentionTime AND j.originalJob IS NULL AND j.id NOT IN (:excludedIds)")
-                ->setParameter('maxRetentionTime', new \DateTime('-'.$input->getOption('max-retention')))
+                ->setParameter('maxRetentionTime', new \DateTime('-' . $input->getOption('max-retention')))
                 ->setParameter('canceled', Job::STATE_CANCELED)
                 ->setParameter('excludedIds', $excludedIds)
                 ->setMaxResults(100)
@@ -183,6 +184,6 @@ class CleanUpCommand extends ContainerAwareCommand
                 $excludedIds[] = $job->getId();
                 yield $job;
             }
-        } while ( ! empty($jobs));
+        } while (!empty($jobs));
     }
 }

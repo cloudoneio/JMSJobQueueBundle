@@ -156,6 +156,25 @@ class JobRepository extends EntityRepository
         return false;
     }
 
+    public function clearLock(Job $job)
+    {
+        $affectedRows = $this->_em->getConnection()->executeUpdate(
+            "UPDATE jms_jobs SET workerName = NULL, updatedAt = :updatedAt WHERE id = :id",
+            array(
+                'id' => $job->getId(),
+                'updatedAt' => 'datetime',
+            )
+        );
+
+        if ($affectedRows > 0) {
+            $job->setWorkerName(null);
+
+            return true;
+        }
+
+        return false;
+    }
+
     public function findAllForRelatedEntity($relatedEntity)
     {
         list($relClass, $relId) = $this->getRelatedEntityIdentifier($relatedEntity);

@@ -430,21 +430,7 @@ class RunCommand extends \Symfony\Bundle\FrameworkBundle\Command\ContainerAwareC
             $pb->add('exec');
         }
 
-        // Localize the `console` command
-        $finder = new Finder();
-        $finder
-            ->files()
-            ->name('console')
-            ->depth('< 2')
-            ->in(dirname($this->getContainer()->getParameter('kernel.root_dir')));
-
-        if (!count($finder)) {
-            throw new \RuntimeException('JMSJobQueueBundle wasn\'t able to find your `console` command.');
-        }
-        foreach ($finder as $file) {
-            $console = $file->getRealPath();
-            break;
-        }
+        $console = realpath($_SERVER['SCRIPT_FILENAME']);
 
         $pb
             ->add('php')

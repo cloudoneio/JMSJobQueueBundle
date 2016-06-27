@@ -143,7 +143,7 @@ class JobRepository extends EntityRepository
             array(
                 'worker' => $workerName,
                 'id' => $job->getId(),
-                'updatedAt' => new \DateTime(),
+                'updatedAt' => 'datetime',
             )
         );
 

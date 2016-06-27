@@ -46,8 +46,11 @@ class CleanUpCommand extends ContainerAwareCommand
             if ($job->isRetried()) {
                 continue;
             }
-
-            $repository->closeJob($job, Job::STATE_INCOMPLETE);
+            if($job->getState() == Job::STATE_PENDING){
+                $repository->clearLock($job);
+            }else{
+                $repository->closeJob($job, Job::STATE_INCOMPLETE);
+            }
         }
     }
 

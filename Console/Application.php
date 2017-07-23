@@ -12,7 +12,6 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Debug\Exception\FlattenException;
-use Symfony\Component\HttpKernel\Exception\FlattenException as LegacyFlattenException;
 use Symfony\Component\HttpKernel\KernelInterface;
 
 /**
@@ -90,7 +89,7 @@ class Application extends BaseApplication
                 'id' => $jobId,
                 'memoryUsage' => memory_get_peak_usage(),
                 'memoryUsageReal' => memory_get_peak_usage(true),
-                'trace' => serialize($ex ? (class_exists(FlattenException::class) ? FlattenException::create($ex) : LegacyFlattenException::create($ex)) : null),
+                'trace' => serialize($ex ? FlattenException::create($ex) : null),
             ),
             array(
                 'id' => \PDO::PARAM_INT,

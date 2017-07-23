@@ -23,7 +23,6 @@ use Doctrine\ORM\Mapping as ORM;
 use JMS\JobQueueBundle\Exception\InvalidStateTransitionException;
 use JMS\JobQueueBundle\Exception\LogicException;
 use Symfony\Component\Debug\Exception\FlattenException;
-use Symfony\Component\HttpKernel\Exception\FlattenException as LegacyFlattenException;
 
 /**
  * @ORM\Entity(repositoryClass = "JMS\JobQueueBundle\Entity\Repository\JobRepository")
@@ -190,6 +189,20 @@ class Job
     public static function isNonSuccessfulFinalState($state)
     {
         return in_array($state, array(self::STATE_CANCELED, self::STATE_FAILED, self::STATE_INCOMPLETE, self::STATE_TERMINATED), true);
+    }
+
+    public static function getStates()
+    {
+        return array(
+            self::STATE_NEW,
+            self::STATE_PENDING,
+            self::STATE_CANCELED,
+            self::STATE_RUNNING,
+            self::STATE_FINISHED,
+            self::STATE_FAILED,
+            self::STATE_TERMINATED,
+            self::STATE_INCOMPLETE
+        );
     }
 
     public function __construct($command, array $args = array(), $confirmed = true, $queue = self::DEFAULT_QUEUE, $priority = self::PRIORITY_DEFAULT)
@@ -586,11 +599,8 @@ class Job
         return $this->checkedAt;
     }
 
-    public function setStackTrace($ex)
+    public function setStackTrace(FlattenException $ex)
     {
-        if(!$ex instanceof FlattenException && !$ex instanceof LegacyFlattenException) {
-            throw new \InvalidArgumentException(sprintf('Parameter of %s must be an instance of %s or %s.', __METHOD__, FlattenException::class, LegacyFlattenException::class));
-        }
         $this->stackTrace = $ex;
     }
 

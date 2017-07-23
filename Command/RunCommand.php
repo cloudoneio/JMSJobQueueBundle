@@ -58,6 +58,8 @@ class RunCommand extends \Symfony\Bundle\FrameworkBundle\Command\ContainerAwareC
     /** @var bool */
     private $shouldShutdown = false;
 
+    private $consoleFile;
+
     protected function configure()
     {
         $this
@@ -74,6 +76,8 @@ class RunCommand extends \Symfony\Bundle\FrameworkBundle\Command\ContainerAwareC
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $startTime = time();
+
+        $this->consoleFile = $this->findConsoleFile();
 
         $maxRuntime = (integer) $input->getOption('max-runtime');
         if ($maxRuntime <= 0) {
@@ -361,7 +365,8 @@ class RunCommand extends \Symfony\Bundle\FrameworkBundle\Command\ContainerAwareC
         foreach ($job->getArgs() as $arg) {
             $pb->add($arg);
         }
-        $proc = $pb->getProcess();
+        
+        $proc = new Process($pb->getProcess()->getCommandLine());
         $proc->start();
         $this->output->writeln(sprintf('Started %s.', $job));
 
@@ -408,7 +413,7 @@ class RunCommand extends \Symfony\Bundle\FrameworkBundle\Command\ContainerAwareC
             ;
 
             // We use a separate process to clean up.
-            $proc = $pb->getProcess();
+            $proc = new Process($pb->getProcess()->getCommandLine());
             if (0 !== $proc->run()) {
                 $ex = new ProcessFailedException($proc);
 
@@ -430,11 +435,10 @@ class RunCommand extends \Symfony\Bundle\FrameworkBundle\Command\ContainerAwareC
             $pb->add('exec');
         }
 
-        $console = realpath($_SERVER['SCRIPT_FILENAME']);
 
         $pb
-            ->add('php')
-            ->add($console)
+            ->add(PHP_BINARY)
+            ->add($this->consoleFile)
             ->add('--env='.$this->env)
         ;
 
@@ -443,6 +447,21 @@ class RunCommand extends \Symfony\Bundle\FrameworkBundle\Command\ContainerAwareC
         }
 
         return $pb;
+    }
+
+    private function findConsoleFile()
+    {
+        $kernelDir = $this->getContainer()->getParameter('kernel.root_dir');
+
+        if (file_exists($kernelDir.'/console')) {
+            return $kernelDir.'/console';
+        }
+
+        if (file_exists($kernelDir.'/../bin/console')) {
+            return $kernelDir.'/../bin/console';
+        }
+
+        throw new \RuntimeException('Could not locate console file.');
     }
 
     /**
